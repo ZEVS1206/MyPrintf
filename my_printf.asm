@@ -5,6 +5,7 @@ section .data
 
 ; Таблица переходов
 jmp_table:
+    dq print_binary_number; %b
     dq print_char         ; %c
     dq print_decimal_number ; %d
     dq print_string       ; %s
@@ -46,21 +47,12 @@ print_string:
     end_add_string:
     ret
 
-print_decimal_number:
+print_binary_number:
     movsx r9, edi
-    mov r11, 10
+    mov r11, 2
     xor rcx, rcx
-;Process negative number
-;--------------------------
-    cmp r9, 0
-    jns convert_number
-    neg r9
-    mov dl, '-'
-    call buffer_write_char
-    xor rcx, rcx
-;--------------------------
 
-    convert_number:
+    .convert_number:
     mov rax, r9
     xor rdx, rdx
     div r11
@@ -70,14 +62,51 @@ print_decimal_number:
     push rdx
     inc rcx
     cmp r9, 0
-    jne convert_number
+    jne .convert_number
 
-    add_to_buffer:
+    .add_to_buffer:
     pop rdx
     mov r10, rcx
     call buffer_write_char
     mov rcx, r10
-    loop add_to_buffer
+    loop .add_to_buffer
+
+    ret
+
+
+
+print_decimal_number:
+    movsx r9, edi
+    mov r11, 10
+    xor rcx, rcx
+;Process negative number
+;--------------------------
+    cmp r9, 0
+    jns .convert_number
+    neg r9
+    mov dl, '-'
+    call buffer_write_char
+    xor rcx, rcx
+;--------------------------
+
+    .convert_number:
+    mov rax, r9
+    xor rdx, rdx
+    div r11
+
+    mov r9, rax
+    add dl, '0'
+    push rdx
+    inc rcx
+    cmp r9, 0
+    jne .convert_number
+
+    .add_to_buffer:
+    pop rdx
+    mov r10, rcx
+    call buffer_write_char
+    mov rcx, r10
+    loop .add_to_buffer
 
     ret
 
@@ -127,25 +156,34 @@ my_printf_cdecl:
     inc rsi                     
     mov dl, [rsi]
 
+    cmp dl, 'b'
+    je .binary
 
     cmp dl, 'c'
     je .char
+
     cmp dl, 'd'
     je .decimal
+
     cmp dl, 's'
     je .string
+
     jmp .default
 
-    .char:
+    .binary:
     mov rax, 0
     jmp .jump
 
-    .decimal:
+    .char:
     mov rax, 1
     jmp .jump
 
+    .decimal:
+    mov rax, 2
+    jmp .jump
+
     .string:
-    mov rax, 2 
+    mov rax, 3 
     jmp .jump
 
     .default:
