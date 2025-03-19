@@ -2,12 +2,15 @@ section .data
     buffer_for_text db 64 dup(0) 
     len_of_buffer equ $ - buffer_for_text
     buffer_index dq 0
+    hex_digits db "0123456789abcdef"
 
 ; Таблица переходов
 jmp_table:
     dq print_binary_number; %b
     dq print_char         ; %c
     dq print_decimal_number ; %d
+    dq print_hex_number; %h
+    dq print_octal_number; %o
     dq print_string       ; %s
 
 section .text
@@ -47,6 +50,61 @@ print_string:
     end_add_string:
     ret
 
+print_hex_number:
+    movsx r9, edi
+    mov r11, 16
+    xor rcx, rcx
+
+    .convert_number:
+    mov rax, r9
+    xor rdx, rdx
+    div r11
+
+    mov r9, rax
+    movsx rdx, dl
+    mov dl, [hex_digits + rdx]
+    push rdx
+    inc rcx
+    cmp r9, 0
+    jne .convert_number
+
+    .add_to_buffer:
+    pop rdx
+    mov r10, rcx
+    call buffer_write_char
+    mov rcx, r10
+    loop .add_to_buffer
+
+    ret
+
+
+print_octal_number:
+    movsx r9, edi
+    mov r11, 8
+    xor rcx, rcx
+
+    .convert_number:
+    mov rax, r9
+    xor rdx, rdx
+    div r11
+
+    mov r9, rax
+    movsx rdx, dl
+    mov dl, [hex_digits + rdx]
+    push rdx
+    inc rcx
+    cmp r9, 0
+    jne .convert_number
+
+    .add_to_buffer:
+    pop rdx
+    mov r10, rcx
+    call buffer_write_char
+    mov rcx, r10
+    loop .add_to_buffer
+
+    ret
+
 print_binary_number:
     movsx r9, edi
     mov r11, 2
@@ -58,7 +116,8 @@ print_binary_number:
     div r11
 
     mov r9, rax
-    add dl, '0'
+    movsx rdx, dl
+    mov dl, [hex_digits + rdx]
     push rdx
     inc rcx
     cmp r9, 0
@@ -165,6 +224,12 @@ my_printf_cdecl:
     cmp dl, 'd'
     je .decimal
 
+    cmp dl, 'h'
+    je .hex
+
+    cmp dl, 'o'
+    je .octal
+
     cmp dl, 's'
     je .string
 
@@ -182,8 +247,16 @@ my_printf_cdecl:
     mov rax, 2
     jmp .jump
 
+    .hex:
+    mov rax, 3
+    jmp .jump
+
+    .octal:
+    mov rax, 4
+    jmp .jump
+
     .string:
-    mov rax, 3 
+    mov rax, 5
     jmp .jump
 
     .default:
