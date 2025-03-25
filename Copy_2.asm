@@ -52,7 +52,7 @@ print_string:
     mov rbx, rdi
 .loop:
     mov dl, [rbx]
-    test dl, dl
+    cmp dl, 0
     jz .done
     call buffer_write_char
     inc rbx

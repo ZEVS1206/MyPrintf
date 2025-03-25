@@ -13,10 +13,10 @@ int main()
     //     my_printf("I am DED!\n");
     // }
     //my_printf("%d %d %d %d %d %d %d %d\n", 1, 2, 3, 4, 5, 6, 7, 8);
-    //my_printf("%d %d %d %d %c %c %c %c %h %h %o %o %b %b\n", 1, 2, 3, 4, 'a', 'b', 'c', 'd', 0xa6, 0x22, 0011, 0022, 0b1010, 0b0101);
-    for (int i = 0; i < 12; i++)
-    {
-        my_printf("%d\n", i);
-    }
+    my_printf("%d %d %d %d %c %c %c %c %h %h %o %o %b %b\n", 1, 2, 3, 4, 'a', 'b', 'c', 'd', 0xa6, 0x22, 0011, 0022, 0b1010, 0b0101);
+    // for (int i = 0; i < 12; i++)
+    // {
+    //     my_printf("%d\n", i);
+    // }
     return 0;
 }
