@@ -1,10 +1,8 @@
 section .data
-    buffer_for_text db 500 dup(0) 
+    buffer_for_text db 10000 dup(0) 
     len_of_buffer equ $ - buffer_for_text
     buffer_index dq 0
     hex_digits db "0123456789abcdef"
-    number dd 1984
-    fmt db "%d\n"
 
 ; Таблица переходов
 jmp_table:
@@ -41,6 +39,9 @@ flush_buffer:
     ret
 
 print_string:
+    push rbp
+    mov rbp, rsp
+
     mov r9, rdi              
 
     add_string_to_buffer:
@@ -51,9 +52,12 @@ print_string:
     inc r9                 
     jmp add_string_to_buffer
     end_add_string:
+    pop rbp
     ret
 
 print_binary_octal_hex_number:
+    push rbp
+    mov rbp, rsp
     movsx r9, edi
     ;mov r11, 16
     xor rcx, rcx
@@ -78,6 +82,7 @@ print_binary_octal_hex_number:
     mov rcx, r10
     loop .add_to_buffer
 
+    pop rbp
     ret
 
 
@@ -138,6 +143,9 @@ print_binary_octal_hex_number:
 
 
 print_decimal_number:
+    push rbp
+    mov rbp, rsp
+
     movsx r9, edi
     mov r11, 10
     xor rcx, rcx
@@ -169,7 +177,8 @@ print_decimal_number:
     call buffer_write_char
     mov rcx, r10
     loop .add_to_buffer
-
+    
+    pop rbp
     ret
 
 print_char:
@@ -198,26 +207,17 @@ my_printf:
     push rsi
     push rdi
 
-    mov r12, 6
-    mov r13, 0
+    mov r13, 1
 
     call my_printf_cdecl
 
     mov rax, 0xDED
 
-    cmp r12, r13
-    jl .mull
-.next:
-    imul r12, 8
 
-
-    add rsp, r12
+    add rsp, 48
 
     pop rbp ;Return old stack frame
     ret
-.mull:
-    mov r12, r13
-    jmp .next
 
 my_printf_cdecl:
     push rbp
@@ -262,12 +262,12 @@ my_printf_cdecl:
 
     jmp .default
 
-    .binary:
+.binary:
     mov rax, 0
     mov r11, 2
     jmp .jump
 
-    .char:
+.char:
     mov rax, 1
     jmp .jump
 
@@ -275,28 +275,31 @@ my_printf_cdecl:
     mov rax, 2
     jmp .jump
 
-    .hex:
+.hex:
     mov rax, 0
     mov r11, 16
     jmp .jump
 
-    .octal:
+.octal:
     mov rax, 0
     mov r11, 8
     jmp .jump
 
-    .string:
+.string:
     mov rax, 3
     jmp .jump
 
-    .default:
+.default:
     call buffer_write_char
     inc rsi                     
     jmp analyze_format
 
-    .jump:
+.jump:
     inc r13
     mov rdi, [rbx]
+    cmp r13, 6
+    je .skip_address
+    .next_step:
     add rbx, 8
 
     lea r10, [jmp_table + rax * 8]; Calculate address in jump table
@@ -304,7 +307,11 @@ my_printf_cdecl:
     inc rsi ;Skip symbol of specificator
     jmp analyze_format
 
-    end_printf:
+.skip_address:
+    add rbx, 16
+    jmp .next_step
+
+end_printf:
     call flush_buffer           
     pop rbp                     
     ret
