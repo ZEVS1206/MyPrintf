@@ -1,28 +1,30 @@
 section .data
-    format db "Hello, %d %s", 0Ah, 0
-    string db "World!", 0
-    len_of_str equ $ - string
-    number dd 1234
-    len_of_number equ $ - number
-    buffer_for_text db 64 dup(0) 
+    buffer_for_text db 500 dup(0) 
     len_of_buffer equ $ - buffer_for_text
     buffer_index dq 0
+    hex_digits db "0123456789abcdef"
+    number dd 1984
+    fmt db "%d\n"
 
+; Таблица переходов
 jmp_table:
-    dq print_char
-    dq print_decimal_number
-    dq print_string
-
+    dq print_binary_octal_hex_number; %b
+    dq print_char         ; %c
+    dq print_decimal_number ; %d
+    ;dq print_hex_number; %h
+    ;dq print_octal_number; %o
+    dq print_string       ; %s
 
 section .text
-    global my_printf
+    ;global _start
+    global my_printf 
 
 buffer_write_char:
     mov rcx, [buffer_index]      
     cmp rcx, len_of_buffer       
     jge flush_buffer             
 
-    mov [buffer_for_text + rcx], dl 
+    mov [buffer_for_text + rcx], dl
     inc rcx                      
     mov [buffer_index], rcx      
     ret
@@ -34,7 +36,8 @@ flush_buffer:
     mov rdx, [buffer_index]
     syscall
 
-    mov dword [buffer_index], 0 
+    mov byte [buffer_for_text], 0
+    mov qword [buffer_index], 0
     ret
 
 print_string:
@@ -48,103 +51,180 @@ print_string:
     inc r9                 
     jmp add_string_to_buffer
     end_add_string:
+    ret
 
-    inc rsi
-    add rbp, 8
-    mov rdi, [rbp]
-    add rbp, 8
-    mov rdx, [rbp]
+print_binary_octal_hex_number:
+    movsx r9, edi
+    ;mov r11, 16
+    xor rcx, rcx
+
+    .convert_number:
+    mov rax, r9
+    xor rdx, rdx
+    div r11
+
+    mov r9, rax
+    movsx rdx, dl
+    mov dl, [hex_digits + rdx]
+    push rdx
+    inc rcx
+    cmp r9, 0
+    jne .convert_number
+
+    .add_to_buffer:
+    pop rdx
+    mov r10, rcx
+    call buffer_write_char
+    mov rcx, r10
+    loop .add_to_buffer
 
     ret
 
-print_decimal_number:
-    movsx r9, dword [rdi]
-    mov rbx, 10
-    xor rcx, rcx
 
+; print_octal_number:
+;     movsx r9, edi
+;     mov r11, 8
+;     xor rcx, rcx
+
+;     .convert_number:
+;     mov rax, r9
+;     xor rdx, rdx
+;     div r11
+
+;     mov r9, rax
+;     movsx rdx, dl
+;     mov dl, [hex_digits + rdx]
+;     push rdx
+;     inc rcx
+;     cmp r9, 0
+;     jne .convert_number
+
+;     .add_to_buffer:
+;     pop rdx
+;     mov r10, rcx
+;     call buffer_write_char
+;     mov rcx, r10
+;     loop .add_to_buffer
+
+;     ret
+
+; print_binary_number:
+;     movsx r9, edi
+;     mov r11, 2
+;     xor rcx, rcx
+
+;     .convert_number:
+;     mov rax, r9
+;     xor rdx, rdx
+;     div r11
+
+;     mov r9, rax
+;     movsx rdx, dl
+;     mov dl, [hex_digits + rdx]
+;     push rdx
+;     inc rcx
+;     cmp r9, 0
+;     jne .convert_number
+
+;     .add_to_buffer:
+;     pop rdx
+;     mov r10, rcx
+;     call buffer_write_char
+;     mov rcx, r10
+;     loop .add_to_buffer
+
+;     ret
+
+
+
+print_decimal_number:
+    movsx r9, edi
+    mov r11, 10
+    xor rcx, rcx
+;Process negative number
+;--------------------------
     cmp r9, 0
-    jns convert_number
+    jns .convert_number
     neg r9
     mov dl, '-'
     call buffer_write_char
+    xor rcx, rcx
+;--------------------------
 
-    convert_number:
+    .convert_number:
     mov rax, r9
-    cqo
     xor rdx, rdx
-
-    idiv rbx
+    div r11
 
     mov r9, rax
     add dl, '0'
     push rdx
     inc rcx
     cmp r9, 0
-    jne convert_number
+    jne .convert_number
 
-    add_to_buffer:
+    .add_to_buffer:
     pop rdx
     mov r10, rcx
     call buffer_write_char
     mov rcx, r10
-    loop add_to_buffer
-
-    inc rsi
-    add rbp, 8
-    mov rdi, [rbp]
-    add rbp, 8
-    mov rdx, [rbp]
+    loop .add_to_buffer
 
     ret
 
 print_char:
-    mov dl, [rdi]
+    mov dl, dil
     call buffer_write_char
-    inc rsi
-    add rbp, 8
-    mov rdi, [rbp]
-    add rbp, 8
-    mov rdx, [rbp] 
-    
     ret
 
+; _start:
+;     push number
+;     push fmt
+;     call my_printf_cdecl
+
+;     mov rax, 60
+;     int 0x80
+
+
 my_printf:
-    push rbp     ;Save old value of stack frame                    
-    mov rbp, rsp ;Get new value of stack frame in virtual space of function                
 
-    jmp empty
-    add_separator:
-    inc rsi
-    mov dl, [rsi]
+    push rbp     ;Save old stack frame
+    mov rbp, rsp ;Create new stack frame for virtual space
 
-    cmp dl, 0
-    je end_of
+    push r9 
+    push r8
+    push rcx
+    push rdx
+    push rsi
+    push rdi
 
-    cmp dl, 'n'
-    je add_newline
-    jmp end_of
+    mov r12, 6
+    mov r13, 0
 
-    cmp dl, 't'
-    je add_tab
-    jmp end_of
+    call my_printf_cdecl
 
-    add_newline:
-    mov dl, 0Ah
-    call buffer_write_char
-    ;inc rsi
-    jmp end_of
+    mov rax, 0xDED
 
-    add_tab:
-    mov dl, 09h
-    call buffer_write_char
-    ;inc rsi
-    jmp end_of
+    cmp r12, r13
+    jl .mull
+.next:
+    imul r12, 8
 
-    empty:
-    mov rsi, [rbp + 16];format         
-    mov rdi, [rbp + 24];number         
-    mov rdx, [rbp + 32];len_of_number
-    add rbp, 32
+
+    add rsp, r12
+
+    pop rbp ;Return old stack frame
+    ret
+.mull:
+    mov r12, r13
+    jmp .next
+
+my_printf_cdecl:
+    push rbp
+    mov rbp, rsp
+
+    mov rsi, [rbp + 16]  ; format
+    lea rbx, [rbp + 24]  ; first argument
 
     analyze_format:
     mov dl, [rsi]               
@@ -154,11 +234,7 @@ my_printf:
     cmp dl, '%'                 
     je check_format
 
-    cmp dl, '\'
-    je add_separator
-    
     call buffer_write_char
-    end_of:
     inc rsi                    
     jmp analyze_format
 
@@ -166,24 +242,51 @@ my_printf:
     inc rsi                     
     mov dl, [rsi]
 
+    cmp dl, 'b'
+    je .binary
+
     cmp dl, 'c'
     je .char
+
     cmp dl, 'd'
     je .decimal
+
+    cmp dl, 'h'
+    je .hex
+
+    cmp dl, 'o'
+    je .octal
+
     cmp dl, 's'
     je .string
+
     jmp .default
 
-    .char:
+    .binary:
     mov rax, 0
+    mov r11, 2
     jmp .jump
 
-    .decimal:
+    .char:
     mov rax, 1
     jmp .jump
 
-    .string:
+    .decimal:
     mov rax, 2
+    jmp .jump
+
+    .hex:
+    mov rax, 0
+    mov r11, 16
+    jmp .jump
+
+    .octal:
+    mov rax, 0
+    mov r11, 8
+    jmp .jump
+
+    .string:
+    mov rax, 3
     jmp .jump
 
     .default:
@@ -192,23 +295,16 @@ my_printf:
     jmp analyze_format
 
     .jump:
-    lea rbx, [jmp_table + rax*8]
-    call [rbx]
+    inc r13
+    mov rdi, [rbx]
+    add rbx, 8
+
+    lea r10, [jmp_table + rax * 8]; Calculate address in jump table
+    call [r10]; Call function for processing
+    inc rsi ;Skip symbol of specificator
     jmp analyze_format
 
     end_printf:
     call flush_buffer           
     pop rbp                     
-    ret                         
-
-;_start:
-;    push len_of_str
-;    push string
-;    push len_of_number
-;    push number
-;    push format
-;    call my_printf
-;    add rsp, 5 * 8              
-;    mov rax, 60                 
-;    xor rdi, rdi                
-;    syscall
+    ret

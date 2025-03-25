@@ -2,7 +2,7 @@
 CC = g++
 ASM = nasm
 
-CXXFLAGS = -Wall -Wextra -std=c++11 -O2
+CFLAGS = -Wall -Wextra -std=c++11 -O2
 
 ASMFLAGS = -f elf64
 
@@ -24,7 +24,7 @@ $(TARGET): $(OBJ_CPP) $(OBJ_ASM)
 
 
 $(OBJ_CPP): $(SRC_CPP)
-	$(CC) $(CXXFLAGS) -c $(SRC_CPP) -o $(OBJ_CPP)
+	$(CC) $(CFLAGS) -c $(SRC_CPP) -o $(OBJ_CPP)
 
 
 $(OBJ_ASM): $(SRC_ASM)
